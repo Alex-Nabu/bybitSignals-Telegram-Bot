@@ -3,13 +3,14 @@
   "version": "1.0.0",
   "description": "A Telegram bot for Bybit signals",
   "main": "index.js",
-  "type" : "module",
+  "type": "module",
   "scripts": {
     "start": "node index.js",
     "dev": "nodemon index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
+    "ccxt": "^4.4.68",
     "dotenv": "^16.3.1",
     "node-telegram-bot-api": "^0.64.0"
   },

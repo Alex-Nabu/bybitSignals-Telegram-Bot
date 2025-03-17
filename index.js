@@ -1,5 +1,7 @@
 import * as dotenv from "dotenv";
 import TelegramBot from "node-telegram-bot-api";
+import ccxt from 'ccxt';
+
 dotenv.config({ path: './config.toml' });
 
 // config defaults
@@ -7,6 +9,25 @@ process.env.TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || 'xxxx';
 
 const token = process.env.TELEGRAM_BOT_TOKEN;
 const bot = new TelegramBot(token, { polling: true });
+
+const {apiKey, apiSecret} = process.env;
+const bybitFutures = new ccxt.bybit({
+    'apiKey': apiKey,
+    'secret': apiSecret,
+    'enableRateLimit': true,
+    'options': {
+        'defaultType': 'future',
+    }
+});
+
+
+await bybitFutures.load_markets();
+
+// // Fetch account balance from the exchange
+let bybitBalanceInfo = await bybitFutures.fetchBalance();
+console.log(bybitBalanceInfo);
+let bybitBalance = bybitBalanceInfo.info.availableBalance;
+
 
 bot.on('message', (msg) => {
     const chatId = msg.chat.id;
@@ -17,6 +38,7 @@ bot.on('message', (msg) => {
 
     if(signal) {
         bot.sendMessage(chatId, JSON.stringify(signal, 2));
+        // bot.sendMessage(chatId, JSON.stringify(bybitBalanceInfo.total.USDT));
         console.log(signal);
     }
 
@@ -56,9 +78,19 @@ function isSinal(text) {
             stopLossPattern: /Stop-Loss:\s*([\d,.]+)/
         },
         {
+            entryPattern: /entre:\s*([\d,.]+)\s*-\s*([\d,]+)/, // Matches "entre: 0,2580 - 0,2558"
+            targetPattern: /TP:\s*([\d,]+(?:,\s*[\d,]+)*)/, // Matches "TP: 0,2598, 0,2652, 0,2706, 0,2760"
+            stopLossPattern: /Stoploss:\s*([\d,]+)/ // Matches "Stoploss: 0,2421"
+        },
+        {
             entryPattern: /Buy Zone - \s*([\d,.]+)/,
             targetPattern: /1.\s*([\d,.]+)/,
             stopLossPattern: /Stop-Loss:\s*([\d,.]+)/
+        },
+        {
+            entryPattern: /Entry\s*(?:above|below):\s*([\d,.]+)/, // Matches "Entry above: 0.1726" or "Entry below: 0.1726"
+            targetPattern: /Targets:\s*\$([\d,.]+)/, // Matches "Targets: $0.1226"
+            stopLossPattern: /Stop:\s*\$([\d,.]+)/ // Matches "Stop: $0.1926"
         },
         {
             entryPattern: /Entry price:\s*\$([\d,.]+)/,
@@ -85,15 +117,26 @@ function isSinal(text) {
 }
 
 function extractNumbers(text) {
-    return text.replace(",", "."); // Replace commas with periods for consistent parsing
+    return text.replace(",", ".").replace(/[^\d.]/g, "");
 }
+
+function extractSymbol(text) {
+    const symbolMatch = text.match(/\b[\w/]*USDT\w*\b/); // Match any word containing "USDT"
+    if (symbolMatch) {
+        // Strip non-letter characters from the matched word
+        return symbolMatch[0].replace(/[^a-zA-Z]/g, "");
+    }
+    return null; // Return null if no symbol is found
+}
+
 
 function extractEntryTargetStopLoss(text, entryPattern, targetPattern, stopLossPattern) {
     const entryMatch = text.match(entryPattern);
     const targetMatch = text.match(targetPattern);
     const stopLossMatch = text.match(stopLossPattern);
+    const symbol = extractSymbol(text);
 
-    if (entryMatch && targetMatch) {
+    if (symbol && entryMatch && targetMatch) {
         const entry = parseFloat(extractNumbers(entryMatch[1]));
 
         // Extract all targets from the captured line
@@ -105,6 +148,7 @@ function extractEntryTargetStopLoss(text, entryPattern, targetPattern, stopLossP
         const stopLoss = stopLossMatch ? parseFloat(extractNumbers(stopLossMatch[1])) : null;
 
         return {
+            symbol,
             entry,
             target: targets,
             stopLoss
