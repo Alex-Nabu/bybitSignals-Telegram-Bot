@@ -1,6 +1,8 @@
 import * as dotenv from "dotenv";
 import TelegramBot from "node-telegram-bot-api";
 import ccxt from 'ccxt';
+import WebSocket from 'ws';
+
 
 dotenv.config({ path: './config.toml' });
 
@@ -29,17 +31,83 @@ console.log(bybitBalanceInfo);
 let bybitBalance = bybitBalanceInfo.info.availableBalance;
 
 
-bot.on('message', (msg) => {
+bot.on('message', async (msg) => {
     const chatId = msg.chat.id;
     const text = msg.text;
     console.log(msg.text);
 
     const signal = isSinal(text);
+    let amount = 1;
 
     if(signal) {
         bot.sendMessage(chatId, JSON.stringify(signal, 2));
         // bot.sendMessage(chatId, JSON.stringify(bybitBalanceInfo.total.USDT));
         console.log(signal);
+
+        let topCoinInfo = { symbol: signal.symbol.toUpperCase(), price: null, precision: null };
+        topCoinInfo.precision = bybitFutures.markets[topCoinInfo.symbol.replace("USDT", "/USDT:USDT")].precision.amount;
+
+        topCoinInfo.price = await fetchWebsocketPriceBybit(topCoinInfo.symbol);
+
+        let futuresSymbol = topCoinInfo.symbol.replace("USDT", "/USDT:USDT");
+
+        signal.side = 'long';
+        let leverage = 25;
+        let positionSide = 'long';
+
+
+        // await bybitFutures.cancelAllOrders(topCoinInfo.symbol);
+
+        // let setleverage = await bybitFutures.fapiPrivate_post_leverage({ 'symbol': futuresSymbol, 'leverage': leverage })
+
+        let tradeSize = null;
+
+        tradeSize = ((amount / topCoinInfo.price) * leverage).toFixed(topCoinInfo.precision);
+
+        const side = (positionSide == 'long') ? 'buy' : 'sell';       // edit here
+
+        const InverseSide = (positionSide == 'long') ? 'sell' : 'buy';       // edit here
+
+        console.log(signal, tradeSize, topCoinInfo, bybitFutures.markets[topCoinInfo.symbol.replace("USDT", "/USDT:USDT")]);
+
+        let order = {};
+
+        let orderExec = false;
+
+        while (true) {
+            orderExec = await tryToCreateOrder(bybitFutures, futuresSymbol, 'limit', side, tradeSize, signal.entry);
+            if (orderExec !== false) {
+                order = orderExec;
+                break;
+            }
+        }
+
+        // Optional Stop Loss manual
+        // let slOrder = {};
+        // if (sl && sl !== '0' && strategyType == 'manual') {
+        //     let slOrderExec = false;
+        //     while (true) {
+        //         slOrderExec = await tryToCreateOrder(bybitFutures, futuresSymbol, 'STOP_MARKET', InverseSide, tradeSize, null, { stopPrice: sl, "reduceOnly": 'true' });
+        //         if (slOrderExec !== false) {
+        //             slOrder = slOrderExec;
+        //             break;
+        //         }
+        //     }
+        // }
+
+
+        // // Optional Take Profit manual
+        // let tpOrder = {};
+        // if (tp && tp !== '0' && strategyType == 'manual') {
+        //     let tpOrderExec = false;
+        //     while (true) {
+        //         tpOrderExec = await tryToCreateOrder(bybitFutures, futuresSymbol, 'TAKE_PROFIT_MARKET', InverseSide, tradeSize, null, { stopPrice: tp, "reduceOnly": 'true' });
+        //         if (tpOrderExec !== false) {
+        //             tpOrder = tpOrderExec;
+        //             break;
+        //         }
+        //     }
+        // }
     }
 
     bot.sendMessage(chatId, `Yo crowdi`);
@@ -161,4 +229,93 @@ function extractEntryTargetStopLoss(text, entryPattern, targetPattern, stopLossP
 // Add more patterns and logic as needed
 function extractNumbersAndCompare(entryPrice, targetPrice) {
     return entryPrice > targetPrice ? 'above' : 'below';
+}
+
+
+async function fetchWebsocketPriceBybit(symbol) {
+    let ticker = symbol.toUpperCase();
+    let tickerPrice = null;
+
+    // Bybit WebSocket URL for mark price streams
+    const wsUrl = `wss://stream.bybit.com/v5/public/linear`;
+
+    // Create WebSocket connection
+    let ws = new WebSocket(wsUrl);
+
+    ws.on('open', function open() {
+        console.log('WebSocket connection opened');
+        // Subscribe to the mark price stream for the given symbol
+        ws.send(JSON.stringify({
+            "op": "subscribe",
+            "args": [`tickers.${ticker}`]
+        }));
+    });
+
+    ws.on('message', function message(data) {
+        // console.log('received: %s', data);
+        data = JSON.parse(data);
+
+        // Check if the message contains mark price data
+        if (data.topic && data?.data?.markPrice) {
+            tickerPrice = data.data.markPrice;
+            console.log(`websocket price for ${symbol}:`, tickerPrice);
+        }
+    });
+
+    ws.on('ping', (e) => { // Listen for ping event
+        ws.pong(); // Send pong frame
+    });
+
+    ws.on('close', function close() {
+        console.log('WebSocket connection closed');
+    });
+
+    ws.on('error', function error(err) {
+        console.error('WebSocket error:', err);
+    });
+
+    // Wait for the price to be received
+    while (!tickerPrice) {
+        console.log(`waiting on websocket price for ${symbol}...`, tickerPrice);
+        await pause(500);
+    }
+
+    console.log(`websocket price for ${symbol}:`, tickerPrice);
+    ws.close();
+    return tickerPrice;
+}
+
+// Utility function to pause execution
+function pause(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+// (async () => {
+//     const symbol = 'BTCUSDT';
+//     const price = await fetchWebsocketPriceBybit(symbol);
+//     console.log(`Mark price for ${symbol}:`, price);
+// })();
+
+//ccxt crate order
+const tryToCreateOrder = async function (exchange, symbol, type, side, amount, price, params) {
+
+    try {
+
+        const order = await exchange.createOrder(symbol, type, side, amount, price, params)
+        return order
+
+    } catch (e) {
+
+        console.log(e.constructor.name, e.message)
+
+        if (e instanceof ccxt.NetworkError) {
+
+            // retry on networking errors
+            return false
+
+        } else {
+
+            throw e // break on all other exceptions
+        }
+    }
 }
