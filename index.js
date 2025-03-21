@@ -68,14 +68,14 @@ bot.on('message', async (msg) => {
 
         const InverseSide = (positionSide == 'long') ? 'sell' : 'buy';       // edit here
 
-        console.log(signal, tradeSize, topCoinInfo, bybitFutures.markets[topCoinInfo.symbol.replace("USDT", "/USDT:USDT")]);
+        console.log(signal, tradeSize, topCoinInfo);
 
         let order = {};
 
         let orderExec = false;
 
         while (true) {
-            orderExec = await tryToCreateOrder(bybitFutures, futuresSymbol, 'limit', side, tradeSize, signal.entry);
+            orderExec = await tryToCreateOrder(bybitFutures, futuresSymbol, 'limit', side, tradeSize, signal.entry, {stopLoss : 0.15, takeProfit : 0.2, basePrice : topCoinInfo.price});
             if (orderExec !== false) {
                 order = orderExec;
                 break;
