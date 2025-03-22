@@ -64,7 +64,7 @@ bot.on('message', async (msg) => {
 
         tradeSize = ((amount / topCoinInfo.price) * leverage).toFixed(topCoinInfo.precision);
 
-        const side = (positionSide == 'long') ? 'buy' : 'sell';       // edit here
+        const side = (signal.entry > signal.stopLoss) ? 'buy' : 'sell';       // edit here
 
         const InverseSide = (positionSide == 'long') ? 'sell' : 'buy';       // edit here
 
@@ -74,13 +74,19 @@ bot.on('message', async (msg) => {
 
         let orderExec = false;
 
-        while (true) {
-            orderExec = await tryToCreateOrder(bybitFutures, futuresSymbol, 'limit', side, tradeSize, signal.entry, {stopLoss : 0.15, takeProfit : 0.2, basePrice : topCoinInfo.price});
-            if (orderExec !== false) {
-                order = orderExec;
-                break;
+        // create differnt same price limit orders to tp at diff levels
+        for(let i = 0; i < signal.target.length; i++) {
+            let orderSize = (tradeSize / signal.target.length).toFixed(topCoinInfo.precision);
+            while (true) {
+                orderExec = await tryToCreateOrder(bybitFutures, futuresSymbol, 'limit', side, orderSize, signal.entry, {stopLoss : signal.stopLoss, takeProfit : signal.target[i], basePrice : topCoinInfo.price});
+                if (orderExec !== false) {
+                    order = orderExec;
+                    break;
+                }
             }
         }
+
+
 
         // Optional Stop Loss manual
         // let slOrder = {};
@@ -142,27 +148,27 @@ function isSinal(text) {
         },
         {
             entryPattern: /Entry:\s*\$([\d,.]+)/,
-            targetPattern: /Targets:\s*\$([\d,.]+(?:,\s*[\d,.]+)*)/, // Capture the entire Targets line
+            targetPattern: /Targets:\s*\$([^\n]*)/, // Capture the entire Targets line
             stopLossPattern: /Stop-Loss:\s*([\d,.]+)/
         },
         {
             entryPattern: /entre:\s*([\d,.]+)\s*-\s*([\d,]+)/, // Matches "entre: 0,2580 - 0,2558"
-            targetPattern: /TP:\s*([\d,]+(?:,\s*[\d,]+)*)/, // Matches "TP: 0,2598, 0,2652, 0,2706, 0,2760"
+            targetPattern: /TP:\s*([^\n]*)/, // Matches "TP: 0,2598, 0,2652, 0,2706, 0,2760"
             stopLossPattern: /Stoploss:\s*([\d,]+)/ // Matches "Stoploss: 0,2421"
         },
         {
             entryPattern: /Buy Zone - \s*([\d,.]+)/,
-            targetPattern: /1.\s*([\d,.]+)/,
+            targetPattern: /1.\s*([^\n]*)/,
             stopLossPattern: /Stop-Loss:\s*([\d,.]+)/
         },
         {
             entryPattern: /Entry\s*(?:above|below):\s*([\d,.]+)/, // Matches "Entry above: 0.1726" or "Entry below: 0.1726"
-            targetPattern: /Targets:\s*\$([\d,.]+)/, // Matches "Targets: $0.1226"
+            targetPattern: /Targets:\s*\$([^\n]*)/, // Matches "Targets: $0.1226"
             stopLossPattern: /Stop:\s*\$([\d,.]+)/ // Matches "Stop: $0.1926"
         },
         {
             entryPattern: /Entry price:\s*\$([\d,.]+)/,
-            targetPattern: /Target:\s*\$([\d,.]+)/, // New pattern for "Target:"
+            targetPattern: /Target:\s*\$([^\n]*)/, // New pattern for "Target:"
             stopLossPattern: /Stop:\s*\$([\d,.]+)/ // New pattern for "Stop:"
         }
     ];
