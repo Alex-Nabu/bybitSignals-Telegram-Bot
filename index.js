@@ -132,12 +132,12 @@ function isSinal(text) {
     const patterns = [
         {
             entryPattern: /Entry Zone:\s*([\d,.]+)/,
-            targetPattern: /Targets:\s*([\d,.]+(?:,\s*[\d,.]+)*)/, // Capture the entire Targets line
+            targetPattern: /Targets:\s*([^\n]*)/, // Capture the entire Targets line
             stopLossPattern: /Stop-Loss:\s*([\d,.]+)/
         },
         {
             entryPattern: /Entry price:\s*\$([\d,.]+)/,
-            targetPattern: /Targets:\s*\$([\d,.]+(?:,\s*[\d,.]+)*)/, // Capture the entire Targets line
+            targetPattern: /Targets:\s*([^\n]*)/, // Capture the entire Targets line
             stopLossPattern: /Stop-Loss:\s*([\d,.]+)/
         },
         {
