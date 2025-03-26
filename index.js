@@ -159,6 +159,16 @@ function isSinal(text) {
             stopLossPattern: /Stop-Loss:\s*([\d,.]+)/
         },
         {
+            entryPattern: /Entry:\s*([\d.]+)/,
+            targetPattern: /TP\d+:\s*([^\n]*)/g,
+            stopLossPattern: /SL:\s*([\d.]+)/
+        },
+        {
+            entryPattern: /Entry price:\s*$([\d.]+)/,
+            targetPattern: /Target:\s*([^\n]*)/g,
+            stopLossPattern: /Stop:\s*([\d.]+)/
+        },
+        {
             entryPattern: /entre:\s*([\d,.]+)\s*-\s*([\d,]+)/, // Matches "entre: 0,2580 - 0,2558"
             targetPattern: /TP:\s*([^\n]*)/, // Matches "TP: 0,2598, 0,2652, 0,2706, 0,2760"
             stopLossPattern: /Stoploss:\s*([\d,]+)/ // Matches "Stoploss: 0,2421"
@@ -202,41 +212,53 @@ function extractNumbers(text) {
 }
 
 function extractSymbol(text) {
-    const symbolMatch = text.match(/\b[\w/]*USDT\w*\b/); // Match any word containing "USDT"
-    if (symbolMatch) {
-        // Strip non-letter characters from the matched word
-        return symbolMatch[0].replace(/[^a-zA-Z]/g, "");
+    try {
+        const symbolMatch = text.match(/\b[\w/]*USDT\w*\b/); // Match any word containing "USDT"
+        if (symbolMatch) {
+            // Strip non-letter characters from the matched word
+            return symbolMatch[0].replace(/[^a-zA-Z]/g, "");
+        }
+        return null; // Return null if no symbol is found
+    
+    } catch(e) {
+        console.log(e)
+        return null;
     }
-    return null; // Return null if no symbol is found
 }
 
 
 function extractEntryTargetStopLoss(text, entryPattern, targetPattern, stopLossPattern) {
-    const entryMatch = text.match(entryPattern);
-    const targetMatch = text.match(targetPattern);
-    const stopLossMatch = text.match(stopLossPattern);
-    const symbol = extractSymbol(text);
-
-    if (symbol && entryMatch && targetMatch) {
-        const entry = parseFloat(extractNumbers(entryMatch[1]));
-
-        // Extract all targets from the captured line
-        const targets = targetMatch[1]
-            .split(",") // Split by commas
-            .map(t => parseFloat(extractNumbers(t.trim()))) // Trim spaces and parse numbers
-            .filter(t => !isNaN(t)); // Filter out NaN values
-
-        const stopLoss = stopLossMatch ? parseFloat(extractNumbers(stopLossMatch[1])) : null;
-
-        return {
-            symbol,
-            entry,
-            target: targets,
-            stopLoss
-        };
+    try {
+        const entryMatch = text.match(entryPattern);
+        const targetMatch = text.match(targetPattern);
+        const stopLossMatch = text.match(stopLossPattern);
+        const symbol = extractSymbol(text);
+    
+        if (symbol && entryMatch && targetMatch) {
+            const entry = parseFloat(extractNumbers(entryMatch[1]));
+    
+            // Extract all targets from the captured line
+            const targets = targetMatch[1]
+                .split(",") // Split by commas
+                .map(t => parseFloat(extractNumbers(t.trim()))) // Trim spaces and parse numbers
+                .filter(t => !isNaN(t)); // Filter out NaN values
+    
+            const stopLoss = stopLossMatch ? parseFloat(extractNumbers(stopLossMatch[1])) : null;
+    
+            return {
+                symbol,
+                entry,
+                target: targets,
+                stopLoss
+            };
+        }
+    
+        return null; // No match found for this pattern
+    
+    } catch(e) {
+        console.log(e);
+        return null;
     }
-
-    return null; // No match found for this pattern
 }
 
 // Add more patterns and logic as needed
