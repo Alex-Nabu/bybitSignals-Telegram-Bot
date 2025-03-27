@@ -148,6 +148,11 @@ function isSinal(text) {
             targetPattern: /Targets:\s*([^\n]*)/, // Capture the entire Targets line
             stopLossPattern: /Stop-Loss:\s*([\d,.]+)/
         },
+		{
+            entryPattern: /Enter:\s*([\d,.]+)/,
+            targetPattern: /Targets:\s*([^\n]*)/, // Capture the entire Targets line
+            stopLossPattern: /Stop-Loss:\s*([\d,.]+)/
+        },
         {
             entryPattern: /Entry price:\s*\$([\d,.]+)/,
             targetPattern: /Targets:\s*([^\n]*)/, // Capture the entire Targets line
@@ -187,7 +192,12 @@ function isSinal(text) {
             entryPattern: /Entry price:\s*\$([\d,.]+)/,
             targetPattern: /Target:\s*\$([^\n]*)/, // New pattern for "Target:"
             stopLossPattern: /Stop:\s*\$([\d,.]+)/ // New pattern for "Stop:"
-        }
+        }, 
+		{
+		  entryPattern: /Entering:\s*([\d,.]+)/,
+		  targetPattern: /Takeprofit:\s*\$([\d,.]+)/,
+		  stopLossPattern: /Stop:\s*\$([\d,.]+)/
+		}
     ];
     
     // Iterate through patterns and return the first valid match

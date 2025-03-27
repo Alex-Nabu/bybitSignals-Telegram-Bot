@@ -1,4 +1,4 @@
-TELEGRAM_BOT_TOKEN = ""
+TELEGRAM_BOT_TOKEN = "Your Telegram bot Token Here"
 
-apiKey = ""
-apiSecret = ""
+apiKey = "Your Bybit Api Key Here"
+apiSecret = "your bybit Api Key Secret Here"
