@@ -44,37 +44,37 @@ bot.on('message', async (msg) => {
             bot.sendMessage(chatId, JSON.stringify(signal, 2));
             // bot.sendMessage(chatId, JSON.stringify(bybitBalanceInfo.total.USDT));
             console.log(signal);
-    
+
             let topCoinInfo = { symbol: signal.symbol.toUpperCase(), price: null, precision: null };
             topCoinInfo.precision = bybitFutures.markets[topCoinInfo.symbol.replace("USDT", "/USDT:USDT")].precision.amount;
-    
+
             topCoinInfo.price = await fetchWebsocketPriceBybit(topCoinInfo.symbol);
-    
+
             let futuresSymbol = topCoinInfo.symbol.replace("USDT", "/USDT:USDT");
-    
+
             signal.side = 'long';
             let leverage = 25;
             let positionSide = 'long';
-    
-    
+
+
             // await bybitFutures.cancelAllOrders(topCoinInfo.symbol);
-    
+
             // let setleverage = await bybitFutures.fapiPrivate_post_leverage({ 'symbol': futuresSymbol, 'leverage': leverage })
-    
+
             let tradeSize = null;
-    
+
             tradeSize = ((amount / topCoinInfo.price) * leverage).toFixed(topCoinInfo.precision);
-    
+
             const side = (signal.entry > signal.stopLoss) ? 'buy' : 'sell';       // edit here
-    
+
             const InverseSide = (positionSide == 'long') ? 'sell' : 'buy';       // edit here
-    
+
             console.log(signal, tradeSize, topCoinInfo);
-    
+
             let order = {};
-    
+
             let orderExec = false;
-    
+
             // create differnt same price limit orders to tp at diff levels
             for(let i = 0; i < signal.target.length; i++) {
                 let orderSize = (tradeSize / signal.target.length).toFixed(topCoinInfo.precision);
@@ -86,9 +86,9 @@ bot.on('message', async (msg) => {
                     }
                 }
             }
-    
-    
-    
+
+
+
             // Optional Stop Loss manual
             // let slOrder = {};
             // if (sl && sl !== '0' && strategyType == 'manual') {
@@ -101,8 +101,8 @@ bot.on('message', async (msg) => {
             //         }
             //     }
             // }
-    
-    
+
+
             // // Optional Take Profit manual
             // let tpOrder = {};
             // if (tp && tp !== '0' && strategyType == 'manual') {
@@ -116,10 +116,10 @@ bot.on('message', async (msg) => {
             //     }
             // }
         }
-    
+
         bot.sendMessage(chatId, `Yo crowdi`);
-    
-    
+
+
     } catch(e) {
         bot.sendMessage(chatId, JSON.stringify({ error : `error: Please try again ${e}`}));
 
@@ -192,14 +192,14 @@ function isSinal(text) {
             entryPattern: /Entry price:\s*\$([\d,.]+)/,
             targetPattern: /Target:\s*\$([^\n]*)/, // New pattern for "Target:"
             stopLossPattern: /Stop:\s*\$([\d,.]+)/ // New pattern for "Stop:"
-        }, 
+        },
 		{
 		  entryPattern: /Entering:\s*([\d,.]+)/,
 		  targetPattern: /Takeprofit:\s*\$([\d,.]+)/,
 		  stopLossPattern: /Stop:\s*\$([\d,.]+)/
 		}
     ];
-    
+
     // Iterate through patterns and return the first valid match
     for (const pattern of patterns) {
         const result = extractEntryTargetStopLoss(text, pattern.entryPattern, pattern.targetPattern, pattern.stopLossPattern);
@@ -228,8 +228,16 @@ function extractSymbol(text) {
             // Strip non-letter characters from the matched word
             return symbolMatch[0].replace(/[^a-zA-Z]/g, "");
         }
+
+        const usdOnlyMatch = text.match(/\b[\w/]*USD\w*\b/); // Match any word containing "USDT"
+        if (usdOnlyMatch) {
+            // Strip non-letter characters from the matched word
+            return usdOnlyMatch[0].replace(/[^a-zA-Z]/g, "") + 'T'; // add t to usd only match to make USDT
+        }
+
+
         return null; // Return null if no symbol is found
-    
+
     } catch(e) {
         console.log(e)
         return null;
@@ -243,18 +251,18 @@ function extractEntryTargetStopLoss(text, entryPattern, targetPattern, stopLossP
         const targetMatch = text.match(targetPattern);
         const stopLossMatch = text.match(stopLossPattern);
         const symbol = extractSymbol(text);
-    
+
         if (symbol && entryMatch && targetMatch) {
             const entry = parseFloat(extractNumbers(entryMatch[1]));
-    
+
             // Extract all targets from the captured line
             const targets = targetMatch[1]
                 .split(",") // Split by commas
                 .map(t => parseFloat(extractNumbers(t.trim()))) // Trim spaces and parse numbers
                 .filter(t => !isNaN(t)); // Filter out NaN values
-    
+
             const stopLoss = stopLossMatch ? parseFloat(extractNumbers(stopLossMatch[1])) : null;
-    
+
             return {
                 symbol,
                 entry,
@@ -262,9 +270,9 @@ function extractEntryTargetStopLoss(text, entryPattern, targetPattern, stopLossP
                 stopLoss
             };
         }
-    
+
         return null; // No match found for this pattern
-    
+
     } catch(e) {
         console.log(e);
         return null;

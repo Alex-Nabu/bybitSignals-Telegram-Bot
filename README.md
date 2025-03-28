@@ -1,7 +1,6 @@
-Here's the formatted version of your text for GitHub:
 
-```markdown
 # Telegram Signals Bybit Bot by (email: king.xanda+Bb1@gmail.com) 🤖📈
+```markdown
 
 A Node.js bot that listens for trading signals from a Telegram channel and executes trades on Bybit automatically.
 
@@ -42,10 +41,10 @@ A Node.js bot that listens for trading signals from a Telegram channel and execu
 ## Signal Format 📋
 The bot recognizes signals in this format:
 ```
-#AUCTIONUSDT | LONG 
-• Entry Zone: 26.16 
-• Targets: 26.29, 26.94, 27.73, 28.78 
-• Stop-Loss: 25.38 
+#AUCTIONUSDT | LONG
+• Entry Zone: 26.16
+• Targets: 26.29, 26.94, 27.73, 28.78
+• Stop-Loss: 25.38
 ```
 
 ## Configuration Details 🔧
