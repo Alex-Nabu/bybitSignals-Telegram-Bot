@@ -1,6 +1,5 @@
 
 # Telegram Signals Bybit Bot by (email: king.xanda+Bb1@gmail.com) 🤖📈
-```markdown
 
 A Node.js bot that listens for trading signals from a Telegram channel and executes trades on Bybit automatically.
 
