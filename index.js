@@ -33,6 +33,7 @@ let bybitBalance = bybitBalanceInfo.info.availableBalance;
 
 bot.on('message', async (msg) => {
     const chatId = msg.chat.id;
+    const profileName = `${msg.from.first_name || ''} ${msg.from.last_name || ''}`.trim();
     const text = msg.text;
     console.log(msg.text);
 
@@ -46,8 +47,8 @@ bot.on('message', async (msg) => {
             console.log(signal);
 
             let topCoinInfo = { symbol: signal.symbol.toUpperCase(), price: null, precision: null };
-            topCoinInfo.precision = bybitFutures.markets[topCoinInfo.symbol.replace("USDT", "/USDT:USDT")].precision.amount;
-
+            topCoinInfo.precision = (bybitFutures.markets[topCoinInfo.symbol.replace("USDT", "/USDT:USDT")].precision.amount.toString().split('.')[1] || '').length;
+            topCoinInfo.minLotSize = bybitFutures.markets[topCoinInfo.symbol.replace("USDT", "/USDT:USDT")].limits.amount.min;
             topCoinInfo.price = await fetchWebsocketPriceBybit(topCoinInfo.symbol);
 
             let futuresSymbol = topCoinInfo.symbol.replace("USDT", "/USDT:USDT");
@@ -63,7 +64,15 @@ bot.on('message', async (msg) => {
 
             let tradeSize = null;
 
-            tradeSize = ((amount / topCoinInfo.price) * leverage).toFixed(topCoinInfo.precision);
+            try {await bybitFutures.set_leverage(leverage, futuresSymbol)} catch(e) {};
+
+
+            // tradeSize = ((amount / topCoinInfo.price) * leverage).toFixed(topCoinInfo.precision);
+
+            // Calculate percentage move to SL
+
+            // Adjust trade size to ensure loss equals 'amount'
+            tradeSize = (amount / Math.abs(signal.entry - signal.stopLoss)).toFixed(topCoinInfo.precision);
 
             const side = (signal.entry > signal.stopLoss) ? 'buy' : 'sell';       // edit here
 
@@ -117,7 +126,7 @@ bot.on('message', async (msg) => {
             // }
         }
 
-        bot.sendMessage(chatId, `Yo crowdi`);
+        bot.sendMessage(chatId, `Yo crowdi, ${profileName} :)`);
 
 
     } catch(e) {
